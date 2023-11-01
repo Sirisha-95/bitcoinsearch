@@ -1,11 +1,24 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
 
 function App() {
   const [bitcoinsList, setBitcoinsList] = useState([]);
   const [searchVal, setSearchVal] = useState("");
-  const [selectedAssets, setSelectedAssets] = useState([]);
+
   const [sum, setCartVal] = useState(0);
+  const [checked, setChecked] = useState([]);
   useEffect(() => {
     fetch("https://api.coincap.io/v2/assets")
       .then((response) => response.json())
@@ -21,85 +34,86 @@ function App() {
   }
 
   function filterBitcoins(rank) {
-    console.log("called");
+  
     return bitcoinsList.filter((item) => {
       return item["name"].toLowerCase().startsWith(rank);
     });
   }
 
-  function saveToCart(e, asset) {
-    e.preventDefault();
-    const exists = searchIfExists(asset);
-
-    if (exists) {
-      setSelectedAssets(
-        selectedAssets.map((item) => {
-          if (item.rank === asset.rank) {
-            // Create a *new* object with changes
-            return { ...item, selected: e.target.checked };
-          } else {
-            // No changes
-            return item;
-          }
-        })
-      );
-    } else {
-      setSelectedAssets([
-        ...selectedAssets,
-        {
-          rank: asset.rank,
-          selected: e.target.checked,
-          usd: asset.priceUsd,
-        },
-      ]);
-    }
-  }
-
+ 
   function showCart() {
-    console.log("cart items", selectedAssets);
-    const resultsum = selectedAssets
-      .filter((x) => x.selected === true)
-      .reduce((cum, item) => (cum += cum + parseFloat(item.usd)), 0.0);
-    setCartVal(Math.floor(resultsum));
+    console.log("cart items", checked);
+    const cartVal= checked.reduce((item,val, cum)=> (
+     cum= cum+ bitcoinsList.find((x)=>x['id'] === val)['priceUsd']
+  )
+    ,0.0);
+    setCartVal(Math.floor(cartVal));
   }
 
-  function searchIfExists(asset) {
-    const found =
-      selectedAssets.filter((x) => x.rank === asset.rank).length > 0
-        ? true
-        : false;
-    return found;
-  }
 
   function resetCart() {
     setCartVal(0);
-    setSelectedAssets([]);
+  
     setSearchVal("");
+    setChecked([]);
   }
+ 
+
+  const handleToggle = (value) => () => {
+    const currentIndex = checked.indexOf(value);
+    const newChecked = [...checked];
+
+    if (currentIndex === -1) {
+      newChecked.push(value);
+    } else {
+      newChecked.splice(currentIndex, 1);
+    }
+
+    setChecked(newChecked);
+  
+  };
   return (
     <div className="App">
-      <button onClick={resetCart}>Reset</button>
-      PURCHASE BITCOINS
-      <input
-        type="text"
-        placeholder="type to search"
-        onChange={searchString}
-        value={searchVal}
-      ></input>
-      <button onClick={showCart}>Add</button> <span>Cart Value:{sum}</span>
-      <ul>
-        {filterBitcoins(searchVal).map((item) => {
-          return (
-            <li>
-              <input
-                type="checkbox"
-                onChange={(e) => saveToCart(e, item)}
-              ></input>
-              {item.name}
-            </li>
-          );
-        })}
-      </ul>
+      <Box sx={{ flexGrow: 1 }}>
+      <AppBar position="static">
+        <Toolbar>  
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          ESTIMATE ASSET VALUE
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <Button variant="outlined" onClick={resetCart} sx={{m:4}}>Reset</Button>
+    
+     
+      <TextField id="standard-basic" onChange={searchString} sx={{m:2}} value={searchVal} label="Search asset by name" variant="standard" />
+      <Button variant="contained" onClick={showCart} sx={{m:4}}>Add to Cart</Button>
+      <span>Cart Value:</span><Button  variant="contained" color="success" size="medium" sx={{m:4}}>{sum}</Button>
+    
+      
+      <List sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+      {filterBitcoins(searchVal).map((item) => {
+        return (
+          <ListItem
+            key={item.id}
+            disablePadding
+          >
+            <ListItemButton role={undefined} onClick={handleToggle(item.id)} dense>
+              <ListItemIcon>
+                <Checkbox
+                  edge="start"
+                  checked={checked.indexOf(item.id) !== -1}
+                  tabIndex={-1}
+                  disableRipple
+                  inputProps={{ 'aria-labelledby': item.id }}
+                />
+              </ListItemIcon>
+              <ListItemText id={item.id} primary={item.name} />
+            </ListItemButton>
+          </ListItem>
+        );
+      })}
+    </List>
+      </Box>
     </div>
   );
 }
